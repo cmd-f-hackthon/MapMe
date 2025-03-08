@@ -28,13 +28,27 @@ const journalEntrySchema = new mongoose.Schema({
 // Create a model
 const JournalEntry = mongoose.model('JournalEntry', journalEntrySchema);
 
-//Insert a new journal entry
-const newEntry = new JournalEntry({
-    title: 'My First Entry',
-    content: 'This is my first journal entry',
-    location: 'New York',
-    date: new Date()
-});
+// add journal entry to database
+createJournalEntry = async (req, res) => {
+    try {
+        const { title, content, location, date } = req.body;
+        const newEntry = new JournalEntry({ title, content, location, date });
+        await newEntry.save();
+        res.json({ message: 'Journal entry created' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// retrieve all journal entries from database
+retrieveJournalEntries = async (req, res) => {
+    try {
+        const entries = await JournalEntry.find();
+        res.json(entries);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
 
 //Save the new entry to the database
 newEntry.save()
@@ -51,3 +65,12 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 }); 
+
+// Handle POST request to create a journal entry
+app.post('/journal-entries', createJournalEntry);
+
+// Handle GET request to retrieve all journal entries
+app.get('/journal-entries', retrieveJournalEntries);
+
+// Testing endpoint
+app.post('/testing', testing);
