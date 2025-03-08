@@ -9,8 +9,9 @@ import {
   export function AppSidebar() {
     return (
       <Sidebar>
-        <SidebarHeader />
-        History
+        <SidebarHeader>
+            <h2 className="text-xl font-semibold text-gray-900">History</h2>
+        </SidebarHeader>
         <SidebarContent>
           <SidebarGroup />
           <SidebarGroup />
