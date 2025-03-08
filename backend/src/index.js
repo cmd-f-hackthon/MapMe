@@ -50,10 +50,18 @@ retrieveJournalEntries = async (req, res) => {
     }
 };
 
-//Save the new entry to the database
-newEntry.save()
-.then(() => console.log('New journal entry saved'))
-.catch((error) => console.error('Error saving journal entry:', error));
+//testing function
+testing = (req, res) => {
+    console.log(req.body)
+    const { title, content, location, date } = req.body;
+    res.send(`
+        <h1>Journal Entry</h1>
+        <p><strong>Title:</strong> ${title}</p>
+        <p><strong>Content:</strong> ${content}</p>
+        <p><strong>Location:</strong> ${location}</p>
+        <p><strong>Date:</strong> ${date}</p>
+    `);
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
