@@ -5,7 +5,7 @@ import { NavigationMenuDemo } from "@/components/header"
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   return (
-    <div>
+    <div className="h-screen overflow-hidden">
         <header className="z-10">
             <NavigationMenuDemo />
         </header>

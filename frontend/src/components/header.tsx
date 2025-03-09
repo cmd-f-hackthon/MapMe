@@ -13,7 +13,7 @@ import {
 
 export function NavigationMenuDemo() {
   return (
-    <div className="w-full" style={{ backgroundColor: "#C2E9AC", border: "1px solid #486338" }}>
+    <div className="w-full h-15" style={{ backgroundColor: "#9adb75"}}>
         <NavigationMenu>
         <NavigationMenuList>
             <NavigationMenuItem className="ml-4 mt-2 mb-2 mr-2">
