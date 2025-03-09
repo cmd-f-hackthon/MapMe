@@ -205,7 +205,7 @@ app.post('/api/journal', async (req, res) => {
 });
 
 // Update path for an existing journal entry
-app.post('/api/journal/:id/location', async (req, res) => {
+app.post('/api/journal/:id/location', limiter, async (req, res) => {
     try {
         const { latitude, longitude } = req.body;
         const entry = await JournalEntry.findById(req.params.id);
