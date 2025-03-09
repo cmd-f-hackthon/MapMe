@@ -297,3 +297,29 @@ app.get('/journal-entries', limiter, retrieveJournalEntries);
 
 // Testing endpoint
 app.post('/testing', testing);
+
+
+// ----------------------------
+// // TODO: Google OAuth2 API configuration for server handling token exchange
+
+// const { OAuth2Client } = require('google-auth-library');
+
+// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, 'http://localhost:3000/auth');
+
+// app.post('/auth/google', async (req, res) => {
+//     const { credential } = req.body;
+//     try {
+//       const ticket = await client.verifyIdToken({
+//         idToken: credential,
+//         audience: process.env.GOOGLE_CLIENT_ID,
+//       });
+//       const payload = ticket.getPayload();
+//       const userid = payload['sub'];
+  
+//       const { tokens } = await client.getToken(credential);
+//       res.json(tokens);
+//     } catch (error) {
+//       console.error('Error exchanging token:', error);
+//       res.status(500).json({ error: 'Failed to exchange token' });
+//     }
+//   });
