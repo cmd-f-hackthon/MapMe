@@ -42,36 +42,18 @@ const googleMapsClient = {
             throw error;
         }
     },
-    getNearbyPlaces: async (lat, lng, radius = 1000, type = '') => {
+    getLocationDetails: async (lat, lng) => {
         try {
+            // Get detailed address information using reverse geocoding
             const response = await axios.get(
-                `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}${type ? `&type=${type}` : ''}&key=${GOOGLE_MAPS_API_KEY}`
+                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=street_address|point_of_interest|establishment&key=${GOOGLE_MAPS_API_KEY}`
             );
             return response.data;
         } catch (error) {
-            console.error('Places API error:', error);
+            console.error('Location details error:', error);
             throw error;
         }
-    },
-    // getDistanceMatrix: async (origins, destinations) => {
-    //     try {
-    //         // Convert origins and destinations arrays to strings
-    //         const originsStr = origins.map(o => `${o.lat},${o.lng}`).join('|');
-    //         const destinationsStr = destinations.map(d => `${d.lat},${d.lng}`).join('|');
-            
-    //         const response = await axios.get(
-    //             `https://maps.googleapis.com/maps/api/distancematrix/json?` +
-    //             `origins=${encodeURIComponent(originsStr)}` +
-    //             `&destinations=${encodeURIComponent(destinationsStr)}` +
-    //             `&mode=walking` +
-    //             `&key=${GOOGLE_MAPS_API_KEY}`
-    //         );
-    //         return response.data;
-    //     } catch (error) {
-    //         console.error('Distance Matrix API error:', error.response?.data || error.message);
-    //         throw error;
-    //     }
-    // }
+    }
 };
 
 // Set up rate limiter: maximum of 100 requests per 15 minutes
@@ -103,12 +85,12 @@ const journalEntrySchema = new mongoose.Schema({
             required: true
         },
         address: String,
-        nearbyPlaces: [{
-            name: String,
+        details: {
+            formatted_address: String,
             place_id: String,
-            icon: String,
-            vicinity: String
-        }]
+            location_type: String,
+            types: [String]
+        }
     },
     path: [{
         type: {
@@ -179,9 +161,9 @@ app.post('/api/journal', async (req, res) => {
     try {
         const { title, content, latitude, longitude } = req.body;
         
-        // Get address and place details for the location
-        const geocodeResult = await googleMapsClient.reverseGeocode(latitude, longitude);
-        const nearbyPlaces = await googleMapsClient.getNearbyPlaces(latitude, longitude, 100);
+        // Get detailed location information
+        const locationDetails = await googleMapsClient.getLocationDetails(latitude, longitude);
+        const mainResult = locationDetails.results[0] || {};
         
         const newEntry = new JournalEntry({
             title,
@@ -189,8 +171,13 @@ app.post('/api/journal', async (req, res) => {
             location: {
                 type: 'Point',
                 coordinates: [longitude, latitude],
-                address: geocodeResult.results[0]?.formatted_address,
-                nearbyPlaces: nearbyPlaces.results?.slice(0, 5) // Store up to 5 nearby places
+                address: mainResult.formatted_address,
+                details: {
+                    formatted_address: mainResult.formatted_address,
+                    place_id: mainResult.place_id,
+                    location_type: mainResult.geometry?.location_type,
+                    types: mainResult.types
+                }
             },
             path: [{
                 type: 'Point',
