@@ -1,8 +1,9 @@
-import Image from "next/image";
-import { NavigationMenuDemo } from "@/components/header";
+import FootprintTracker from "@/components/footprint-tracker";
 
 export default function Home() {
   return (
-    <NavigationMenuDemo />
+    <main>
+      <FootprintTracker />
+    </main>
   );
 }
