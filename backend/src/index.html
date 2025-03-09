@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Footprint Tracker</title>
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            max-width: 300px;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #trackingBtn {
+            width: 100%;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        #trackingBtn.active {
+            background-color: #F44336;
+            color: white;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        #distance {
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        .controls button {
+            margin: 2px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+        }
+        .controls button:hover {
+            background: #f0f0f0;
+        }
+        .controls div {
+            margin-bottom: 5px;
+        }
+        .user-form {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .user-form input {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .user-form label {
+            display: block;
+            margin-bottom: 2px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .user-info {
+            background-color: #e8f5e9;
+            padding: 5px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        .user-info span {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="user-form" id="userForm">
+            <h3>User Information</h3>
+            <div>
+                <label for="userName">Your Name:</label>
+                <input type="text" id="userName" placeholder="Enter your name">
+            </div>
+            <div>
+                <label for="userEmail">Email (optional):</label>
+                <input type="email" id="userEmail" placeholder="Enter your email">
+            </div>
+            <button onclick="saveUserInfo()">Save User Info</button>
+        </div>
+        <div class="user-info" id="userInfo" style="display: none;">
+            Logged in as: <span id="currentUser">Anonymous</span>
+            <button onclick="changeUser()" style="float: right; padding: 2px 5px; font-size: 10px;">Change</button>
+            <button onclick="loadUserRoutes()" style="display: block; width: 100%; margin-top: 5px;">Show My Routes</button>
+        </div>
+        <button id="trackingBtn" onclick="toggleTracking()">Start Tracking</button>
+        <button onclick="clearPath()">Clear Path</button>
+        <div id="drawingControls">
+            <button id="startDrawing" onclick="startDrawing()">Start Drawing Route</button>
+            <button id="saveRoute" onclick="saveDrawnRoute()" style="display: none;">Save Route</button>
+            <button id="cancelDrawing" onclick="cancelDrawing()" style="display: none;">Cancel Drawing</button>
+        </div>
+        <div id="userRoutes" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+            <h4 style="margin: 0 0 5px 0;">My Saved Routes</h4>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <button onclick="showAllRoutes()" style="flex: 1; margin-right: 2px;">Show All Routes</button>
+                <button onclick="hideAllRoutes()" style="flex: 1; margin-left: 2px;">Hide All Routes</button>
+            </div>
+            <div id="routesList"></div>
+            <button onclick="hideUserRoutes()" style="width: 100%; margin-top: 5px;">Hide Routes Panel</button>
+        </div>
+        <div id="status"></div>
+        <div id="distance"></div>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        let drawingManager;
+        let currentPolyline = null;
+        let drawnPoints = [];
+        let isDrawingMode = false;
+        let currentUser = {
+            id: 'anonymous-' + Date.now(),
+            name: 'Anonymous User',
+            email: ''
+        };
+
+        // User management functions
+        function saveUserInfo() {
+            const name = document.getElementById('userName').value.trim();
+            const email = document.getElementById('userEmail').value.trim();
+            
+            if (!name) {
+                updateStatus('Please enter your name', true);
+                return;
+            }
+            
+            // Generate a consistent user ID based on the username
+            // This ensures the same username always gets the same ID
+            const userId = 'user-' + name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+            
+            currentUser = {
+                id: userId,
+                name: name,
+                email: email
+            };
+            
+            // Update UI
+            document.getElementById('userForm').style.display = 'none';
+            document.getElementById('userInfo').style.display = 'block';
+            document.getElementById('currentUser').textContent = name;
+            
+            updateStatus(`Welcome, ${name}! You can now start tracking or drawing routes.`);
+            
+            // Save to localStorage for persistence
+            localStorage.setItem('footprintUser', JSON.stringify(currentUser));
+            
+            // Automatically load user's routes
+            setTimeout(() => {
+                loadUserRoutes();
+            }, 500);
+        }
+        
+        function changeUser() {
+            document.getElementById('userForm').style.display = 'block';
+            document.getElementById('userInfo').style.display = 'none';
+            document.getElementById('userName').value = currentUser.name;
+            document.getElementById('userEmail').value = currentUser.email;
+        }
+        
+        // Check if user is already saved
+        function loadSavedUser() {
+            const savedUser = localStorage.getItem('footprintUser');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    document.getElementById('userForm').style.display = 'none';
+                    document.getElementById('userInfo').style.display = 'block';
+                    document.getElementById('currentUser').textContent = currentUser.name;
+                    
+                    // Automatically load user's routes after a short delay
+                    // to ensure the map is fully initialized
+                    setTimeout(() => {
+                        loadUserRoutes();
+                    }, 1000);
+                } catch (e) {
+                    console.error('Error loading saved user:', e);
+                }
+            }
+        }
+
+        // Define initMap function before loading Google Maps API
+        function initMap() {
+            // Load saved user if available
+            loadSavedUser();
+            
+            const defaultPosition = { lat: 49.2676, lng: -123.2525 }; // UBC Bookstore
+            
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 16,
+                center: defaultPosition,
+                mapTypeId: 'roadmap'
+            });
+
+            // Initialize drawing manager
+            drawingManager = new google.maps.drawing.DrawingManager({
+                drawingMode: null,
+                drawingControl: false,
+                polylineOptions: {
+                    strokeColor: '#FF0000',
+                    strokeWeight: 2
+                }
+            });
+
+            // Add click listener for manual drawing
+            map.addListener('click', function(e) {
+                if (isDrawingMode) {
+                    addPoint(e.latLng);
+                }
+            });
+
+            if (navigator.geolocation) {
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                };
+                
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        currentPosition = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        map.setCenter(currentPosition);
+                        
+                        // Create initial position marker
+                        currentPositionMarker = new google.maps.Marker({
+                            position: currentPosition,
+                            map: map,
+                            title: "Current Position",
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 8,
+                                fillColor: "#4285F4",
+                                fillOpacity: 1,
+                                strokeColor: "#FFFFFF",
+                                strokeWeight: 2,
+                            }
+                        });
+                    },
+                    error => {
+                        console.error('Geolocation error:', error);
+                        updateStatus(`Error getting location: ${error.message}`, true);
+                        // Still show map at default location
+                        map.setCenter(defaultPosition);
+                    },
+                    options
+                );
+            } else {
+                updateStatus("Geolocation is not supported by this browser", true);
+                map.setCenter(defaultPosition);
+            }
+        }
+
+        let map;
+        let currentPosition;
+        let pathMarkers = [];  // Store markers instead of line coordinates
+        let watchId = null;
+        let currentPositionMarker = null;
+        let isTracking = false;
+
+        function calculateDistance(path) {
+            let totalDistance = 0;
+            for (let i = 1; i < path.length; i++) {
+                const p1 = path[i - 1];
+                const p2 = path[i];
+                
+                // Haversine formula
+                const R = 6371e3; // Earth's radius in meters
+                const φ1 = p1.lat * Math.PI/180;
+                const φ2 = p2.lat * Math.PI/180;
+                const Δφ = (p2.lat-p1.lat) * Math.PI/180;
+                const Δλ = (p2.lng-p1.lng) * Math.PI/180;
+
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                        Math.cos(φ1) * Math.cos(φ2) *
+                        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                
+                totalDistance += R * c;
+            }
+            return totalDistance;
+        }
+
+        function updateStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.backgroundColor = isError ? '#ffebee' : '#e8f5e9';
+            status.style.color = isError ? '#c62828' : '#2e7d32';
+        }
+
+        function toggleTracking() {
+            if (!navigator.geolocation) {
+                updateStatus("Geolocation is not supported", true);
+                return;
+            }
+
+            if (isTracking) {
+                stopTracking();
+                document.getElementById('trackingBtn').textContent = 'Start Tracking';
+            } else {
+                startTracking();
+                document.getElementById('trackingBtn').textContent = 'Stop Tracking';
+            }
+        }
+
+        function startTracking() {
+            if (isTracking) return;
+            isTracking = true;
+            
+            document.getElementById('trackingBtn').classList.add('active');
+            updateStatus("Tracking started");
+
+            watchId = navigator.geolocation.watchPosition(
+                position => {
+                    const newPos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    
+                    // Update current position marker
+                    if (currentPositionMarker) {
+                        currentPositionMarker.setPosition(newPos);
+                    }
+                    console.log(position);
+                    // Add new footprint dot
+                    const footprintDot = new google.maps.Marker({
+                        position: newPos,
+                        map: map,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 4,  // Smaller than current position marker
+                            fillColor: "#FF0000",  // Red dots for footprints
+                            fillOpacity: 0.7,
+                            strokeColor: "#FFFFFF",
+                            strokeWeight: 1,
+                        }
+                    });
+                    
+                    pathMarkers.push(footprintDot);
+
+                    // Update status
+                    updateStatus(`
+                        Tracking active | 
+                        Points: ${pathMarkers.length} | 
+                        Accuracy: ${position.coords.accuracy.toFixed(1)}m
+                    `);
+
+                    // Center map
+                    map.panTo(newPos);
+                },
+                error => {
+                    updateStatus(`Error: ${error.message}`, true);
+                    console.error('Position error:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 1000
+                }
+            );
+        }
+
+        function stopTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                isTracking = false;
+                document.getElementById('trackingBtn').classList.remove('active');
+                
+                // Only save if we have at least 2 points
+                if (pathMarkers.length >= 2) {
+                    saveTrackedRoute();
+                } else {
+                    updateStatus("Tracking stopped. Not enough points to save.");
+                }
+            }
+        }
+        
+        function saveTrackedRoute() {
+            if (pathMarkers.length < 2) {
+                updateStatus('Not enough points to save', true);
+                return;
+            }
+            
+            updateStatus('Saving tracked route...');
+            
+            // Convert markers to path points
+            const trackedPoints = pathMarkers.map(marker => ({
+                lat: marker.getPosition().lat(),
+                lng: marker.getPosition().lng(),
+                timestamp: new Date().toISOString()
+            }));
+            
+            const routeData = {
+                title: `${currentUser.name}'s Tracked Route - ${new Date().toLocaleString()}`,
+                content: `GPS tracked route with ${trackedPoints.length} points by ${currentUser.name}`,
+                user: currentUser,
+                location: {
+                    type: 'Point',
+                    coordinates: [trackedPoints[0].lng, trackedPoints[0].lat]
+                },
+                path: trackedPoints.map(point => ({
+                    type: 'Point',
+                    coordinates: [point.lng, point.lat],
+                    timestamp: point.timestamp
+                }))
+            };
+
+            fetch('/api/journal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(routeData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Tracked route saved:', data);
+                updateStatus(`Tracking stopped. Route saved successfully! ID: ${data._id}`);
+                
+                // Calculate and display the distance
+                const distance = calculateDistance(trackedPoints);
+                document.getElementById('distance').textContent = 
+                    `Total Distance: ${(distance / 1000).toFixed(2)} km`;
+                    
+                // Don't clear the path - let the user see what was saved
+                // They can use the Clear Path button if they want to clear it
+            })
+            .catch(error => {
+                console.error('Error saving tracked route:', error);
+                updateStatus(`Tracking stopped. Error saving route: ${error.message || 'Unknown error'}`, true);
+            });
+        }
+
+        function clearPath() {
+            // Remove all footprint dots from the map
+            pathMarkers.forEach(marker => marker.setMap(null));
+            pathMarkers = [];
+            updateStatus("Path cleared");
+        }
+
+        // Add debug function
+        function debugPathState() {
+            console.log({
+                isTracking,
+                pathMarkersLength: pathMarkers.length,
+                pathMarkers,
+                hasCurrentMarker: !!currentPositionMarker,
+                mapCenter: map ? map.getCenter().toJSON() : null
+            });
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            map.setCenter(map.getCenter());
+        });
+
+        // Check location settings
+        function checkLocationSettings() {
+            navigator.permissions.query({ name: 'geolocation' }).then(result => {
+                console.log('Geolocation permission:', result.state);
+            });
+            
+            if ('DeviceOrientationEvent' in window) {
+                console.log('Device orientation supported');
+            }
+            
+            if ('DeviceMotionEvent' in window) {
+                console.log('Device motion supported');
+            }
+        }
+
+        function startDrawing() {
+            isDrawingMode = true;
+            drawnPoints = [];
+            document.getElementById('startDrawing').style.display = 'none';
+            document.getElementById('saveRoute').style.display = 'inline';
+            document.getElementById('cancelDrawing').style.display = 'inline';
+            updateStatus('Click on the map to draw your route. Click "Save Route" when finished.');
+            
+            // Start new polyline
+            currentPolyline = new google.maps.Polyline({
+                map: map,
+                path: [],
+                strokeColor: '#FF0000',
+                strokeWeight: 2
+            });
+        }
+
+        function addPoint(latLng) {
+            if (!isDrawingMode) return;
+            
+            drawnPoints.push({
+                lat: latLng.lat(),
+                lng: latLng.lng(),
+                timestamp: new Date().toISOString()
+            });
+            
+            currentPolyline.setPath(drawnPoints.map(p => ({ lat: p.lat, lng: p.lng })));
+            updateStatus(`Points in route: ${drawnPoints.length}`);
+        }
+
+        function saveDrawnRoute() {
+            if (drawnPoints.length < 2) {
+                updateStatus('Please draw at least 2 points for a route', true);
+                return;
+            }
+
+            updateStatus('Saving route...');
+            
+            const routeData = {
+                title: `${currentUser.name}'s Route - ${new Date().toLocaleString()}`,
+                content: `Manual route with ${drawnPoints.length} points drawn by ${currentUser.name}`,
+                user: currentUser,
+                location: {
+                    type: 'Point',
+                    coordinates: [drawnPoints[0].lng, drawnPoints[0].lat]
+                },
+                path: drawnPoints.map(point => ({
+                    type: 'Point',
+                    coordinates: [point.lng, point.lat],
+                    timestamp: point.timestamp
+                }))
+            };
+
+            fetch('/api/journal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(routeData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Route saved:', data);
+                updateStatus(`Route saved successfully! ID: ${data._id}`);
+                // Calculate and display the distance
+                const distance = calculateDistance(drawnPoints);
+                document.getElementById('distance').textContent = 
+                    `Total Distance: ${(distance / 1000).toFixed(2)} km`;
+                cancelDrawing();
+            })
+            .catch(error => {
+                console.error('Error saving route:', error);
+                updateStatus(`Error saving route: ${error.message || 'Unknown error'}`, true);
+            });
+        }
+
+        function cancelDrawing() {
+            isDrawingMode = false;
+            if (currentPolyline) {
+                currentPolyline.setMap(null);
+                currentPolyline = null;
+            }
+            drawnPoints = [];
+            document.getElementById('startDrawing').style.display = 'inline';
+            document.getElementById('saveRoute').style.display = 'none';
+            document.getElementById('cancelDrawing').style.display = 'none';
+            updateStatus('Drawing cancelled');
+        }
+
+        // User's routes display and management
+        let userRoutesPolylines = []; // Store polylines for user routes
+        let activeRoutePolyline = null; // Currently highlighted route
+        let allUserRoutes = []; // Store all user routes data
+        let showingAllRoutes = false; // Flag to track if all routes are currently displayed
+        
+        function loadUserRoutes() {
+            if (!currentUser || !currentUser.id) {
+                updateStatus('Please save your user information first', true);
+                return;
+            }
+            
+            updateStatus('Loading your routes...');
+            
+            // Clear previous routes
+            clearUserRoutesFromMap();
+            
+            // Show the routes panel
+            document.getElementById('userRoutes').style.display = 'block';
+            
+            // Fetch user routes from the server
+            fetch(`/api/journal/user/${currentUser.id}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => Promise.reject(err));
+                    }
+                    return response.json();
+                })
+                .then(routes => {
+                    // Store all routes for later use
+                    allUserRoutes = routes || [];
+                    
+                    if (!routes || routes.length === 0) {
+                        document.getElementById('routesList').innerHTML = '<p>No saved routes found.</p>';
+                        updateStatus('No routes found for your account');
+                        return;
+                    }
+                    
+                    // Display routes in the list
+                    displayRoutesList(routes);
+                    updateStatus(`Found ${routes.length} saved routes`);
+                })
+                .catch(error => {
+                    console.error('Error loading routes:', error);
+                    updateStatus('Error loading your routes', true);
+                    document.getElementById('routesList').innerHTML = '<p>Error loading routes.</p>';
+                });
+        }
+        
+        function displayRoutesList(routes) {
+            const routesList = document.getElementById('routesList');
+            routesList.innerHTML = '';
+            
+            routes.forEach((route, index) => {
+                const routeDate = new Date(route.date).toLocaleDateString();
+                const routeTime = new Date(route.date).toLocaleTimeString();
+                const pointCount = route.path ? route.path.length : 0;
+                
+                const routeItem = document.createElement('div');
+                routeItem.className = 'route-item';
+                routeItem.style.padding = '5px';
+                routeItem.style.marginBottom = '5px';
+                routeItem.style.borderBottom = '1px solid #eee';
+                routeItem.style.cursor = 'pointer';
+                
+                routeItem.innerHTML = `
+                    <div><strong>${route.title || 'Unnamed Route'}</strong></div>
+                    <div style="font-size: 11px;">${routeDate} at ${routeTime}</div>
+                    <div style="font-size: 11px;">${pointCount} points</div>
+                `;
+                
+                // Add click event to show the route on map
+                routeItem.addEventListener('click', () => {
+                    showRouteOnMap(route, index);
+                    
+                    // Highlight selected route
+                    document.querySelectorAll('.route-item').forEach(item => {
+                        item.style.backgroundColor = '';
+                    });
+                    routeItem.style.backgroundColor = '#e8f5e9';
+                });
+                
+                routesList.appendChild(routeItem);
+            });
+        }
+        
+        function showRouteOnMap(route, index) {
+            // If all routes are currently displayed, hide them first
+            if (showingAllRoutes) {
+                hideAllRoutes();
+            }
+            
+            // Clear any previously highlighted route
+            if (activeRoutePolyline) {
+                activeRoutePolyline.setMap(null);
+                activeRoutePolyline = null;
+            }
+            
+            if (!route.path || route.path.length < 2) {
+                updateStatus('This route has no path data', true);
+                return;
+            }
+            
+            // Create path coordinates
+            const pathCoords = route.path.map(point => ({
+                lat: point.coordinates[1], // Latitude is second in GeoJSON
+                lng: point.coordinates[0]  // Longitude is first in GeoJSON
+            }));
+            
+            // Create a polyline for the route
+            activeRoutePolyline = new google.maps.Polyline({
+                path: pathCoords,
+                geodesic: true,
+                strokeColor: '#4CAF50', // Green color for the active route
+                strokeOpacity: 1.0,
+                strokeWeight: 4
+            });
+            
+            // Add the polyline to the map
+            activeRoutePolyline.setMap(map);
+            
+            // Fit the map to the route bounds
+            const bounds = new google.maps.LatLngBounds();
+            pathCoords.forEach(coord => bounds.extend(coord));
+            map.fitBounds(bounds);
+            
+            // Calculate and display distance
+            const distance = calculateDistance(pathCoords);
+            document.getElementById('distance').textContent = 
+                `Total Distance: ${(distance / 1000).toFixed(2)} km`;
+                
+            updateStatus(`Showing route: ${route.title || 'Unnamed Route'}`);
+        }
+        
+        function showAllRoutes() {
+            if (!allUserRoutes || allUserRoutes.length === 0) {
+                updateStatus('No routes to display', true);
+                return;
+            }
+            
+            // Clear any previously displayed routes
+            clearUserRoutesFromMap();
+            showingAllRoutes = true;
+            
+            // Create a bounds object to fit all routes
+            const bounds = new google.maps.LatLngBounds();
+            let totalDistance = 0;
+            let totalPoints = 0;
+            
+            // Create a different color for each route
+            const colors = ['#4CAF50', '#2196F3', '#F44336', '#FF9800', '#9C27B0', '#795548', '#607D8B'];
+            
+            // Display each route on the map
+            allUserRoutes.forEach((route, index) => {
+                if (!route.path || route.path.length < 2) return;
+                
+                // Create path coordinates
+                const pathCoords = route.path.map(point => ({
+                    lat: point.coordinates[1], // Latitude is second in GeoJSON
+                    lng: point.coordinates[0]  // Longitude is first in GeoJSON
+                }));
+                
+                // Calculate distance for this route
+                const routeDistance = calculateDistance(pathCoords);
+                totalDistance += routeDistance;
+                totalPoints += pathCoords.length;
+                
+                // Create a polyline for the route with a unique color
+                const color = colors[index % colors.length];
+                const polyline = new google.maps.Polyline({
+                    path: pathCoords,
+                    geodesic: true,
+                    strokeColor: color,
+                    strokeOpacity: 0.8,
+                    strokeWeight: 3
+                });
+                
+                // Add the polyline to the map
+                polyline.setMap(map);
+                userRoutesPolylines.push(polyline);
+                
+                // Add route points to bounds
+                pathCoords.forEach(coord => bounds.extend(coord));
+                
+                // Add start and end markers
+                if (pathCoords.length > 0) {
+                    // Start marker (green)
+                    new google.maps.Marker({
+                        position: pathCoords[0],
+                        map: map,
+                        title: `Start: ${route.title}`,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 7,
+                            fillColor: '#4CAF50',
+                            fillOpacity: 1,
+                            strokeColor: '#FFFFFF',
+                            strokeWeight: 2,
+                        }
+                    });
+                    
+                    // End marker (red)
+                    new google.maps.Marker({
+                        position: pathCoords[pathCoords.length - 1],
+                        map: map,
+                        title: `End: ${route.title}`,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 7,
+                            fillColor: '#F44336',
+                            fillOpacity: 1,
+                            strokeColor: '#FFFFFF',
+                            strokeWeight: 2,
+                        }
+                    });
+                }
+            });
+            
+            // Fit the map to show all routes
+            if (!bounds.isEmpty()) {
+                map.fitBounds(bounds);
+            }
+            
+            // Update status and distance
+            updateStatus(`Showing all ${allUserRoutes.length} routes with ${totalPoints} total points`);
+            document.getElementById('distance').textContent = 
+                `Total Distance (all routes): ${(totalDistance / 1000).toFixed(2)} km`;
+                
+            // Highlight all routes in the list
+            document.querySelectorAll('.route-item').forEach(item => {
+                item.style.backgroundColor = '#e8f5e9';
+            });
+        }
+        
+        function hideAllRoutes() {
+            clearUserRoutesFromMap();
+            showingAllRoutes = false;
+            document.getElementById('distance').textContent = '';
+            updateStatus('All routes hidden');
+            
+            // Remove highlighting from all routes in the list
+            document.querySelectorAll('.route-item').forEach(item => {
+                item.style.backgroundColor = '';
+            });
+        }
+        
+        function clearUserRoutesFromMap() {
+            // Clear all user route polylines
+            userRoutesPolylines.forEach(polyline => {
+                polyline.setMap(null);
+            });
+            userRoutesPolylines = [];
+            
+            // Clear active route
+            if (activeRoutePolyline) {
+                activeRoutePolyline.setMap(null);
+                activeRoutePolyline = null;
+            }
+            
+            showingAllRoutes = false;
+        }
+        
+        function hideUserRoutes() {
+            document.getElementById('userRoutes').style.display = 'none';
+            clearUserRoutesFromMap();
+            document.getElementById('distance').textContent = '';
+            updateStatus('Routes panel hidden');
+        }
+    </script>
+
+    <!-- Load Google Maps API with callback -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAPS_API_KEY_PLACEHOLDER&libraries=drawing&callback=initMap" async defer></script>
+</body>
+</html>
+
