@@ -21,19 +21,19 @@ export function AddEntry() {
   const [date, setDate] = useState<Date | undefined>();
   const [location, setLocation] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
-  const [mood, setMood] = useState<string | null>(null);
-  const [notes, setNotes] = useState<string>("");
+  const [content, setMood] = useState<string | null>(null);
+  const [title, setNotes] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Create a FormData object to send the data
     const formData = new FormData();
-    if (date) formData.append("date", date.toISOString());
     formData.append("location", location);
     if (file) formData.append("file", file);
-    if (mood) formData.append("mood", mood);
-    formData.append("notes", notes);
+    if (content) formData.append("mood", content);
+    formData.append("notes", title);
+    formData.append("path", JSON.stringify([]));
 
     try {
       // Send the data to the backend
@@ -77,10 +77,6 @@ export function AddEntry() {
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Date</Label>
-              <DatePickerDemo date={date} onDateChange={setDate} />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="location-input" className="text-right">
                 Location
               </Label>
@@ -107,7 +103,7 @@ export function AddEntry() {
               <Label className="text-right">Mood</Label>
               <MoodPicker
                 className="col-span-3"
-                selectedMood={mood}
+                selectedMood={content}
                 onMoodChange={setMood}
               />
             </div>
@@ -119,7 +115,7 @@ export function AddEntry() {
                 id="notes-box"
                 defaultValue="Write about your day here!"
                 className="col-span-3"
-                value={notes}
+                value={title}
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
