@@ -8,8 +8,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Uncomment this if you want to redirect to /auth
-    // router.push('/auth');
+    router.replace('/auth');
   }, [router]);
 
   return (
