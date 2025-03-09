@@ -42,3 +42,7 @@ next-env.d.ts
 
 package.json
 package-lock.json
+
+# Ignore local SSL certificates
+frontend/localhost.pem
+frontend/localhost-key.pem
