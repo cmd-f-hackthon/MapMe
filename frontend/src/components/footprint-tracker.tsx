@@ -6,6 +6,7 @@ import UserInfo from './user-info';
 import RouteTracker from './route-tracker';
 import RoutesList from './routes-list';
 import StatusDisplay from './status-display';
+import LocationMarker from './location-marker';
 
 interface User {
   id: string;
@@ -71,6 +72,15 @@ export default function FootprintTracker() {
           isError={isError} 
         />
       </div>
+      
+      {/* Location Marker Component with Floating Action Button */}
+      {map && (
+        <LocationMarker
+          map={map}
+          user={user}
+          onStatusUpdate={updateStatus}
+        />
+      )}
     </div>
   );
 } 

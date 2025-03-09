@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface User {
   id: string;
@@ -24,6 +25,8 @@ interface Route {
     coordinates: [number, number];
     address?: string;
     details?: any;
+    notes?: string;
+    photo?: string;
   };
   path: RoutePoint[];
   date: string;
@@ -173,6 +176,24 @@ export default function RoutesList({ map, user, onStatusUpdate }: RoutesListProp
     setDistance(distance);
     
     onStatusUpdate(`Showing route: ${route.title || 'Unnamed Route'}`);
+    
+    // Display route details including notes and photo if available
+    if (route.location.notes || route.location.photo) {
+      const detailsHtml = `
+        <div class="route-details p-3 bg-white rounded shadow-md">
+          ${route.location.notes ? `<p class="mb-2"><strong>Notes:</strong> ${route.location.notes}</p>` : ''}
+          ${route.location.photo ? `<div class="mt-2"><img src="${route.location.photo}" alt="Location photo" style="max-width: 100%; max-height: 200px;"></div>` : ''}
+        </div>
+      `;
+      
+      // Create an info window for the route details
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: detailsHtml,
+        position: { lat: route.path[0].coordinates[1], lng: route.path[0].coordinates[0] }
+      });
+      
+      infoWindow.open(map);
+    }
   }
 
   function showAllRoutes() {
@@ -319,6 +340,55 @@ export default function RoutesList({ map, user, onStatusUpdate }: RoutesListProp
     onStatusUpdate('Routes panel hidden');
   }
 
+  function deleteRoute(routeId: string, event?: React.MouseEvent) {
+    // Stop event propagation if provided (to prevent clicking the route item)
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    if (!confirm('Are you sure you want to delete this route? This action cannot be undone.')) {
+      return;
+    }
+    
+    onStatusUpdate('Deleting route...');
+    
+    fetch(`/api/journal/${routeId}`, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        return response.text().then(text => {
+          try {
+            return Promise.reject(JSON.parse(text));
+          } catch (e) {
+            return Promise.reject(new Error(`Server error: ${text}`));
+          }
+        });
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Route deleted:', data);
+      onStatusUpdate('Route deleted successfully');
+      
+      // Remove the deleted route from the routes array
+      setRoutes(routes.filter(route => route._id !== routeId));
+      
+      // If the deleted route was the active route, clear it
+      if (activeRouteId === routeId) {
+        hideAllRoutes();
+      }
+    })
+    .catch(error => {
+      console.error('Error deleting route:', error);
+      onStatusUpdate(`Error deleting route: ${error.message || 'Unknown error'}`, true);
+    });
+  }
+
   function calculateDistance(path: {lat: number, lng: number}[]) {
     let totalDistance = 0;
     for (let i = 1; i < path.length; i++) {
@@ -384,7 +454,7 @@ export default function RoutesList({ map, user, onStatusUpdate }: RoutesListProp
             return (
               <div 
                 key={route._id}
-                className={`p-2 border-b cursor-pointer hover:bg-gray-50 ${
+                className={`p-2 border-b cursor-pointer hover:bg-gray-50 relative ${
                   activeRouteId === route._id ? 'bg-green-50' : ''
                 }`}
                 onClick={() => showRouteOnMap(route)}
@@ -392,6 +462,34 @@ export default function RoutesList({ map, user, onStatusUpdate }: RoutesListProp
                 <div className="font-bold">{route.title || 'Unnamed Route'}</div>
                 <div className="text-xs">{routeDate} at {routeTime}</div>
                 <div className="text-xs">{pointCount} points</div>
+                {route.location.notes && (
+                  <div className="text-xs mt-1 italic">
+                    <span className="font-semibold">Notes:</span> {route.location.notes.substring(0, 50)}
+                    {route.location.notes.length > 50 ? '...' : ''}
+                  </div>
+                )}
+                {route.location.photo && (
+                  <div className="mt-1 h-12 w-12 relative">
+                    <Image 
+                      src={route.location.photo} 
+                      alt="Location photo" 
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      className="rounded"
+                    />
+                  </div>
+                )}
+                
+                {/* Delete button */}
+                <button
+                  onClick={(e) => deleteRoute(route._id, e)}
+                  className="absolute top-2 right-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100"
+                  title="Delete route"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             );
           })}
