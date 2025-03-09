@@ -20,7 +20,7 @@ export function NavigationMenuDemo() {
             </Avatar>
             </NavigationMenuItem>
             <NavigationMenuItem>
-                Name
+                Username
             </NavigationMenuItem>
         </NavigationMenuList>
         </NavigationMenu>

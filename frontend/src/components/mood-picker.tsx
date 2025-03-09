@@ -1,25 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const moods = [
-    { id: "excited", src: "/excited.png" },
-    { id: "happy", src: "/happy.png" },
-    { id: "neutral", src: "/neutral.png" },
-    { id: "sad", src: "/sad.png" },
-    { id: "angry", src: "/angry.png" },
+  { id: "excited", src: "/excited.png" },
+  { id: "happy", src: "/happy.png" },
+  { id: "neutral", src: "/neutral.png" },
+  { id: "sad", src: "/sad.png" },
+  { id: "angry", src: "/angry.png" },
 ];
 
-export function MoodPicker({ className }: { className?: string }) {
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+interface MoodPickerProps {
+  className?: string;
+  selectedMood: string | null;
+  onMoodChange: (mood: string | null) => void;
+}
 
+export function MoodPicker({ className, selectedMood, onMoodChange }: MoodPickerProps) {
   return (
     <div className={`w-full ${className}`}>
       <ToggleGroup
         type="single"
         value={selectedMood || undefined}
-        onValueChange={setSelectedMood}
+        onValueChange={onMoodChange}
         className="flex justify-between gap-3.5"
       >
         {moods.map((mood) => (
