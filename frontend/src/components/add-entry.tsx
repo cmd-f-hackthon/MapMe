@@ -74,7 +74,9 @@ export function AddEntry() {
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit">Save Memory</Button>
+          <Button type="submit" className="border">
+            Save Memory
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
