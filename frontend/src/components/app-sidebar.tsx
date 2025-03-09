@@ -7,13 +7,13 @@ import {
   } from "@/components/ui/sidebar"
 import { PolaroidImage } from "./polaroid-image"
   
-  export function AppSidebar() {
+export function AppSidebar() {
     return (
-      <Sidebar>
-        <SidebarHeader>
+        <Sidebar>
+        <SidebarHeader style={{ backgroundColor: "#D3F2C1"}}>
             <h2 className="text-xl font-semibold text-gray-900">History</h2>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent style={{ backgroundColor: "#D3F2C1" }}>
             <SidebarGroup >
                 <PolaroidImage />
             </SidebarGroup>
@@ -25,7 +25,7 @@ import { PolaroidImage } from "./polaroid-image"
             </SidebarGroup>
         </SidebarContent>
         <SidebarFooter />
-      </Sidebar>
+        </Sidebar>
     )
-  }
+}
   

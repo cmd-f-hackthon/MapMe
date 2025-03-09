@@ -5,14 +5,18 @@ import { NavigationMenuDemo } from "@/components/header"
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <main>
-        <NavigationMenuDemo />
-        <SidebarTrigger />
-        {children}
-        <AddEntry />
-      </main>
-    </SidebarProvider>
+    <div>
+        <header className="z-10">
+            <NavigationMenuDemo />
+        </header>
+        <SidebarProvider>
+        <AppSidebar />
+        <main>
+            <SidebarTrigger />
+            {children}
+            <AddEntry />
+        </main>
+        </SidebarProvider>
+    </div>
   )
 }
