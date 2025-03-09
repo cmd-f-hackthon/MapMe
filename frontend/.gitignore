@@ -45,4 +45,8 @@ package-lock.json
 
 # Ignore local SSL certificates
 frontend/localhost.pem
+<<<<<<< HEAD
 frontend/localhost-key.pem
+=======
+frontend/localhost-key.pem
+>>>>>>> de6ec88808c93b34140266ec12de71b0b3838003
