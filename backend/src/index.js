@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const RateLimit = require('express-rate-limit');
+
 
 const app = express();
 
@@ -9,6 +11,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Set up rate limiter: maximum of 100 requests per 15 minutes
+const limiter = RateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // max 100 requests per windowMs
+});
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -28,12 +36,23 @@ const journalEntrySchema = new mongoose.Schema({
 // Create a model
 const JournalEntry = mongoose.model('JournalEntry', journalEntrySchema);
 
+// add journal entry to database
 createJournalEntry = async (req, res) => {
     try {
         const { title, content, location, date } = req.body;
         const newEntry = new JournalEntry({ title, content, location, date });
         await newEntry.save();
         res.json({ message: 'Journal entry created' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// retrieve all journal entries from database
+retrieveJournalEntries = async (req, res) => {
+    try {
+        const entries = await JournalEntry.find();
+        res.json(entries);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }
@@ -65,6 +84,9 @@ app.listen(PORT, () => {
 
 // Handle POST request to create a journal entry
 app.post('/journal-entries', createJournalEntry);
+
+// Handle GET request to retrieve all journal entries
+app.get('/journal-entries', limiter, retrieveJournalEntries);
 
 // Testing endpoint
 app.post('/testing', testing);
