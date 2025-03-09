@@ -5,14 +5,20 @@ import { NavigationMenuDemo } from "@/components/header"
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <main>
-        <NavigationMenuDemo />
-        <SidebarTrigger />
-        {children}
-        <AddEntry />
-      </main>
-    </SidebarProvider>
+    <div className="h-screen overflow-hidden">
+        <header className="z-10">
+            <NavigationMenuDemo />
+        </header>
+        <SidebarProvider>
+        <AppSidebar />
+        <main>
+            <SidebarTrigger />
+            {children}
+            <div className="fixed bottom-0 left-70 p-4"> {/* Fixed positioning */}
+                <AddEntry />
+            </div>
+        </main>
+        </SidebarProvider>
+    </div>
   )
 }
