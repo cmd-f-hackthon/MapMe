@@ -1,0 +1,21 @@
+name: Production Workflow
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  example-job:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Use the secret as an environment variable
+      - name: Access Secret
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          echo "Accessing secrets..."
