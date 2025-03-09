@@ -1,4 +1,5 @@
-require('dotenv').config();
+const dotenv = require('dotenv');
+const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -7,7 +8,7 @@ const axios = require('axios');
 
 const RateLimit = require('express-rate-limit');
 
-
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 // Middleware
