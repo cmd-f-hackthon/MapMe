@@ -5,11 +5,17 @@ const cors = require('cors');
 const axios = require('axios');
 
 const app = express();
-
+const RateLimit = require('express-rate-limit');
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Set up rate limiter: maximum of 100 requests per 15 minutes
+const limiter = RateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // max 100 requests per windowMs
+});
 
 // Google Maps API configuration
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
@@ -197,7 +203,7 @@ app.post('/api/journal/:id/location', async (req, res) => {
 });
 
 // Get journal entry with its path
-app.get('/api/journal/:id', async (req, res) => {
+app.get('/api/journal/:id', limiter, async (req, res) => {
     try {
         const entry = await JournalEntry.findById(req.params.id);
         if (!entry) {
@@ -210,7 +216,7 @@ app.get('/api/journal/:id', async (req, res) => {
 });
 
 // Get all journal entries
-app.get('/api/journal', async (req, res) => {
+app.get('/api/journal', limiter, async (req, res) => {
     try {
         const entries = await JournalEntry.find();
         res.json(entries);
