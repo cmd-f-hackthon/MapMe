@@ -14,7 +14,9 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         <main>
             <SidebarTrigger />
             {children}
-            <AddEntry />
+            <div className="fixed bottom-0 left-70 p-4"> {/* Fixed positioning */}
+                <AddEntry />
+            </div>
         </main>
         </SidebarProvider>
     </div>
