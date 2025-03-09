@@ -136,8 +136,6 @@ journalEntrySchema.index({ location: '2dsphere' });
 const JournalEntry = mongoose.model('JournalEntry', journalEntrySchema);
 
 
-//Insert a new journal entry
-const newEntry = new JournalEntry({ title, content, location, date });
 
 // add journal entry to database
 createJournalEntry = async (req, res) => {
