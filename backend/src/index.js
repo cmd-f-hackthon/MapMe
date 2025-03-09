@@ -17,19 +17,25 @@ const app = express();
 app.use(cors({
     origin: '*', // Be careful with this in production
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Add headers for geolocation permission
+// Add headers for geolocation permission and CORS
 app.use((req, res, next) => {
     res.setHeader('Permissions-Policy', 'geolocation=(self)');
     res.setHeader('Feature-Policy', 'geolocation *');
     // Add additional security headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
     next();
 });
 
@@ -39,7 +45,7 @@ app.use(express.static(path.join(__dirname), {
 }));
 
 // Serve index.html with API key injected
-app.get('/', limiter, (req, res) => {
+app.get('/', (req, res) => {
     const indexPath = path.join(__dirname, 'index.html');
     fs.readFile(indexPath, 'utf8', (err, data) => {
         if (err) {
@@ -68,14 +74,8 @@ const limiter = RateLimit({
 const PORT = process.env.PORT || 4000;
 const HOST = '0.0.0.0';  // Listen on all network interfaces
 
-// SSL certificate configuration
-const sslOptions = {
-    key: fs.readFileSync(path.join(__dirname, '../certs/private.key')),
-    cert: fs.readFileSync(path.join(__dirname, '../certs/certificate.pem'))
-};
-
-// Create HTTPS server
-const server = https.createServer(sslOptions, app);
+// Create HTTP server instead of HTTPS
+const server = app;
 
 // Keep in-memory storage as fallback
 const inMemoryJournalEntries = [];
@@ -297,17 +297,49 @@ app.get('/api/journal/:id', async (req, res) => {
 app.get('/api/journal/user/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
+        console.log(`Fetching journal entries for user: ${userId}`);
         
         if (useMongoDb) {
-            const entries = await JournalEntry.find({ 'user.id': userId });
-            res.json(entries);
+            console.log('Using MongoDB to fetch entries');
+            try {
+                // Validate MongoDB connection
+                if (mongoose.connection.readyState !== 1) {
+                    console.error('MongoDB connection is not ready');
+                    throw new Error('Database connection is not ready');
+                }
+                
+                // Check if JournalEntry model exists
+                if (!JournalEntry) {
+                    console.error('JournalEntry model is not defined');
+                    throw new Error('Database model is not defined');
+                }
+                
+                // Log the query we're about to execute
+                console.log(`Executing query: JournalEntry.find({ 'user.id': '${userId}' })`);
+                
+                // Execute the query with a timeout
+                const entries = await JournalEntry.find({ 'user.id': userId }).maxTimeMS(5000);
+                
+                console.log(`Found ${entries.length} entries for user ${userId}`);
+                console.log('Sample entry (first one):', entries.length > 0 ? JSON.stringify(entries[0]) : 'No entries');
+                
+                return res.json(entries);
+            } catch (dbError) {
+                console.error('Database error:', dbError);
+                return res.status(500).json({ error: `Database error: ${dbError.message}` });
+            }
         } else {
+            console.log('Using in-memory storage to fetch entries');
+            console.log('In-memory entries:', inMemoryJournalEntries.length);
+            
             const entries = inMemoryJournalEntries.filter(entry => entry.user && entry.user.id === userId);
-            res.json(entries);
+            console.log(`Found ${entries.length} entries for user ${userId}`);
+            
+            return res.json(entries);
         }
     } catch (error) {
         console.error('Error fetching user journal entries:', error);
-        res.status(500).json({ error: 'Failed to fetch user entries' });
+        return res.status(500).json({ error: `Failed to fetch user entries: ${error.message}` });
     }
 });
 
@@ -345,14 +377,13 @@ mongoose.connect(process.env.MONGODB_URI, {
 // Function to start the server
 function startServer() {
     server.listen(PORT, HOST, () => {
-        console.log(`Server is running on https://${HOST}:${PORT}`);
+        console.log(`Server is running on http://${HOST}:${PORT}`);
         console.log('To access from other devices on your network:');
         console.log('1. Make sure your phone is connected to the same WiFi');
         console.log('2. Use one of these URLs on your phone:');
-        console.log(`   https://localhost:${PORT}`);
-        console.log(`   https://127.0.0.1:${PORT}`);
-        console.log(`   https://<your-computer-ip>:${PORT}`);
-        console.log('Note: You will need to accept the self-signed certificate warning');
+        console.log(`   http://localhost:${PORT}`);
+        console.log(`   http://127.0.0.1:${PORT}`);
+        console.log(`   http://<your-computer-ip>:${PORT}`);
         console.log(`Using ${useMongoDb ? 'MongoDB' : 'in-memory'} storage for data`);
     });
 }
