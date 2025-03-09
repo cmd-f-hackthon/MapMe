@@ -12,6 +12,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
       # Use the secret as an environment variable
       - name: Access Secret
         env:
@@ -20,3 +26,10 @@ jobs:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
           echo "Accessing secrets..."
+
+      # Install dependencies and run tests in the tests directory
+      - name: Run Tests
+        run: |
+          cd tests
+          npm install
+          npm test
