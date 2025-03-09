@@ -19,8 +19,10 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Increase JSON body size limit to 10MB for image uploads
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Add headers for geolocation permission and CORS
 app.use((req, res, next) => {
@@ -106,7 +108,10 @@ const journalEntrySchema = new mongoose.Schema({
             place_id: String,
             location_type: String,
             types: [String]
-        }
+        },
+        notes: String,
+        photo: String, // Base64 encoded image
+        emoji: String  // Emoji character for the marker
     },
     path: [{
         type: {
@@ -167,7 +172,10 @@ app.post('/api/journal', async (req, res) => {
                     type: 'Point',
                     coordinates: location.coordinates,
                     address: location.address || '',
-                    details: location.details || {}
+                    details: location.details || {},
+                    notes: location.notes || '',
+                    photo: location.photo || '',
+                    emoji: location.emoji || ''
                 },
                 path: Array.isArray(path) ? path.map(point => ({
                     type: 'Point',
@@ -194,7 +202,10 @@ app.post('/api/journal', async (req, res) => {
                     type: 'Point',
                     coordinates: location.coordinates,
                     address: location.address || '',
-                    details: location.details || {}
+                    details: location.details || {},
+                    notes: location.notes || '',
+                    photo: location.photo || '',
+                    emoji: location.emoji || ''
                 },
                 path: Array.isArray(path) ? path.map(point => ({
                     type: 'Point',
@@ -340,6 +351,62 @@ app.get('/api/journal/user/:userId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching user journal entries:', error);
         return res.status(500).json({ error: `Failed to fetch user entries: ${error.message}` });
+    }
+});
+
+// Delete journal entry by ID
+app.delete('/api/journal/:id', async (req, res) => {
+    try {
+        const entryId = req.params.id;
+        console.log(`Deleting journal entry with ID: ${entryId}`);
+        
+        if (useMongoDb) {
+            console.log('Using MongoDB to delete entry');
+            try {
+                // Validate MongoDB connection
+                if (mongoose.connection.readyState !== 1) {
+                    console.error('MongoDB connection is not ready');
+                    throw new Error('Database connection is not ready');
+                }
+                
+                // Check if JournalEntry model exists
+                if (!JournalEntry) {
+                    console.error('JournalEntry model is not defined');
+                    throw new Error('Database model is not defined');
+                }
+                
+                // Find and delete the entry
+                const deletedEntry = await JournalEntry.findByIdAndDelete(entryId);
+                
+                if (!deletedEntry) {
+                    return res.status(404).json({ error: 'Entry not found' });
+                }
+                
+                console.log(`Successfully deleted entry with ID: ${entryId}`);
+                return res.json({ message: 'Entry deleted successfully', deletedEntry });
+            } catch (dbError) {
+                console.error('Database error:', dbError);
+                return res.status(500).json({ error: `Database error: ${dbError.message}` });
+            }
+        } else {
+            console.log('Using in-memory storage to delete entry');
+            
+            // Find the index of the entry to delete
+            const entryIndex = inMemoryJournalEntries.findIndex(entry => entry._id.toString() === entryId);
+            
+            if (entryIndex === -1) {
+                return res.status(404).json({ error: 'Entry not found' });
+            }
+            
+            // Remove the entry from the array
+            const deletedEntry = inMemoryJournalEntries.splice(entryIndex, 1)[0];
+            
+            console.log(`Successfully deleted entry with ID: ${entryId}`);
+            return res.json({ message: 'Entry deleted successfully', deletedEntry });
+        }
+    } catch (error) {
+        console.error('Error deleting journal entry:', error);
+        return res.status(500).json({ error: `Failed to delete entry: ${error.message}` });
     }
 });
 
