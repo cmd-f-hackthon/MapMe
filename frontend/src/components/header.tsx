@@ -14,7 +14,7 @@ export function NavigationMenuDemo() {
         <NavigationMenu>
         <NavigationMenuList>
             <NavigationMenuItem className="ml-4 mt-2 mb-2 mr-2">
-            <Avatar>
+            <Avatar className="w-10 h-10">
                 <AvatarImage src="/tree.jpg" />
                 <AvatarFallback>ME</AvatarFallback>
             </Avatar>
