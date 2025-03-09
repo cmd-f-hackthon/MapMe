@@ -19,6 +19,9 @@ export default function Map({ onMapLoad }: MapProps) {
 
   // Load Google Maps script manually
   useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    console.log('API Key:', apiKey); // Log the API key
+
     // Prevent multiple script loads
     if (document.querySelector('script[src*="maps.googleapis.com/maps/api"]')) {
       if (window.google?.maps) {
@@ -28,7 +31,7 @@ export default function Map({ onMapLoad }: MapProps) {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=drawing`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=drawing`;
     script.async = true;
     script.defer = true;
     script.id = 'google-maps-script';
@@ -106,23 +109,6 @@ export default function Map({ onMapLoad }: MapProps) {
         console.error("Geolocation is not supported by this browser");
         if (onMapLoad) {
           onMapLoad(mapInstance);
-        }
-      }
-
-      // Initialize drawing manager if available
-      if (window.google.maps.drawing) {
-        try {
-          const drawingManager = new window.google.maps.drawing.DrawingManager({
-            drawingMode: null,
-            drawingControl: false,
-            polylineOptions: {
-              strokeColor: '#FF0000',
-              strokeWeight: 2
-            }
-          });
-          drawingManager.setMap(mapInstance);
-        } catch (e) {
-          console.error('Error initializing drawing manager:', e);
         }
       }
     } catch (error) {
