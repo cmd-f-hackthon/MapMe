@@ -45,7 +45,7 @@ app.use(express.static(path.join(__dirname), {
 }));
 
 // Serve index.html with API key injected
-app.get('/', limiter, (req, res) => {
+app.get('/', (req, res) => {
     const indexPath = path.join(__dirname, 'index.html');
     fs.readFile(indexPath, 'utf8', (err, data) => {
         if (err) {
