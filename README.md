@@ -66,10 +66,6 @@ npm install
 npm run dev
 ```
 
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:4000
-
 ## 🌈 Features
 - Interactive map interface
 - Location discovery
