@@ -13,7 +13,9 @@ https://github.com/user-attachments/assets/6b0e914e-6a8a-4ed5-8650-8a4ec15bc3c7
 - Linda
 
 ## 🌟 Project Overview
-MapMe is a web application that helps users discover and share locations with an interactive mapping experience. Built during the cmd-f 2025 hackathon, this project combines modern web technologies to create a seamless user experience for location-based interactions.
+Traditional methods of preserving memories often lack spatial context, making them less vivid. We wanted to address this by placing a focus on location-based journaling.
+
+MapMe is a web application that allows users to journal their memories with an interactive mapping experience. It was built during the cmd-f 2025 hackathon.
 
 ## 🚀 Tech Stack
 ### Frontend
@@ -21,12 +23,16 @@ MapMe is a web application that helps users discover and share locations with an
 - TypeScript
 - Tailwind CSS
 - Google Maps API
+- Google OAuth 2.0 API
 
 ### Backend
 - Node.js
 - Express.js
 - MongoDB
 - RESTful API
+
+### Testing
+- Jest
 
 ## 🛠️ Setup Instructions
 
@@ -35,19 +41,21 @@ MapMe is a web application that helps users discover and share locations with an
 - npm or yarn
 - MongoDB
 - Google Maps API key
+- Google OAuth Client ID
 
 ### Environment Variables
 
 1. Frontend Setup (`frontend/.env.local`):
 ```
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR-API-KEY
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<YOUR-API-KEY>
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<YOUR-CLIENT-ID>
 ```
 
 2. Backend Setup (`backend/.env`):
 ```
 PORT=4000
-MONGODB_URI=your_mongodb_connection_string
-GOOGLE_MAPS_API_KEY=YOUR-API-KEY
+MONGODB_URI=<your_mongodb_connection_string>
+GOOGLE_MAPS_API_KEY=<YOUR-API-KEY>
 ```
 
 ### Installation & Running
@@ -66,16 +74,20 @@ npm install
 npm run dev
 ```
 
+3. Testing Setup:
+```bash
+cd tests
+npm install
+npm test
+```
+
 ## 🌈 Features
 - Interactive map interface
-- Location discovery
+- Journal data storage
 - User authentication
-- Real-time updates
+- Real-time location updates
 - Responsive design
-- Location sharing capabilities
 
- 
- 
  
  
  
